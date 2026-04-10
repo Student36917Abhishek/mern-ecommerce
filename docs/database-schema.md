@@ -10,6 +10,7 @@ Fields:
 - password
 - role (user/admin)
 - createdAt
+- updatedAt
 
 Example:
 {
@@ -17,7 +18,8 @@ Example:
 "email": "rahul@gmail.com",
 "password": "hashedpassword",
 "role": "user",
-"createdAt": "2026-04-08"
+"createdAt": "2026-04-08",
+"updatedAt":"2026-05-09",
 }
 
 ## Products Collection
@@ -31,7 +33,10 @@ Fields:
 - category
 - stock
 - image
+- rating
+- numReviews
 - createdAt
+- updatedAt
 
 Example:
 {
@@ -52,6 +57,7 @@ Fields:
 - products
   - productId
   - quantity
+    -updatedAt
 
 ## Orders Collection
 
@@ -63,7 +69,8 @@ Fields:
   - productId
   - quantity
 - totalAmount
-- status
+- paymentStatus
+- orderStatus
 - shippingAddress
 - createdAt
 
