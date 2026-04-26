@@ -1,8 +1,9 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const Product = require("../models/Product");
-const { protect, adminOnly } = require("../middleware/authMiddleware");
+const { protect, sellerOrAdmin } = require("../middleware/authMiddleware");
 const { sendSuccess } = require("../utils/apiResponse");
+const { logAudit } = require("../utils/auditLogger");
 const {
   validateProductCreate,
   validateProductUpdate,
@@ -10,11 +11,42 @@ const {
 
 const router = express.Router();
 
-router.post("/", protect, adminOnly, validateProductCreate, async (req, res) => {
+router.post("/", protect, sellerOrAdmin, validateProductCreate, async (req, res) => {
   try {
-    const product = new Product(req.body);
+    const product = new Product({
+      ...req.body,
+      seller: req.user.role === "seller" ? req.user._id : req.body.seller || null,
+    });
     const savedProduct = await product.save();
+
+    await logAudit({
+      actor: req.user._id,
+      actorRole: req.user.role,
+      action: "product_created",
+      targetType: "product",
+      targetId: savedProduct._id,
+      details: {
+        name: savedProduct.name,
+        price: savedProduct.price,
+        stock: savedProduct.stock,
+      },
+    });
+
     return sendSuccess(res, 201, "Product created successfully.", { product: savedProduct });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+});
+
+router.get("/mine", protect, sellerOrAdmin, async (req, res) => {
+  try {
+    const query = req.user.role === "admin" ? {} : { seller: req.user._id };
+    const products = await Product.find(query).sort({ createdAt: -1 });
+
+    return sendSuccess(res, 200, "My products fetched successfully.", {
+      count: products.length,
+      products,
+    });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -116,7 +148,7 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-router.put("/:id", protect, adminOnly, validateProductUpdate, async (req, res) => {
+router.put("/:id", protect, sellerOrAdmin, validateProductUpdate, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ message: "Invalid product ID." });
@@ -130,14 +162,42 @@ router.put("/:id", protect, adminOnly, validateProductUpdate, async (req, res) =
       }
     }
 
-    const product = await Product.findByIdAndUpdate(req.params.id, updates, {
-      returnDocument: "after",
-      runValidators: true,
-    });
+    const product = await Product.findById(req.params.id);
 
     if (!product) {
       return res.status(404).json({ message: "Product not found." });
     }
+
+    const isAdmin = req.user.role === "admin";
+    const isOwner = String(product.seller) === String(req.user._id);
+    if (!isAdmin && !isOwner) {
+      return res.status(403).json({ message: "You can update only your own products." });
+    }
+
+    const previousSnapshot = {
+      price: product.price,
+      stock: product.stock,
+    };
+
+    for (const key of Object.keys(updates)) {
+      product[key] = updates[key];
+    }
+
+    await product.save();
+
+    await logAudit({
+      actor: req.user._id,
+      actorRole: req.user.role,
+      action: "product_updated",
+      targetType: "product",
+      targetId: product._id,
+      details: {
+        previousPrice: previousSnapshot.price,
+        nextPrice: product.price,
+        previousStock: previousSnapshot.stock,
+        nextStock: product.stock,
+      },
+    });
 
     return sendSuccess(res, 200, "Product updated successfully.", { product });
   } catch (error) {
@@ -145,16 +205,35 @@ router.put("/:id", protect, adminOnly, validateProductUpdate, async (req, res) =
   }
 });
 
-router.delete("/:id", protect, adminOnly, async (req, res) => {
+router.delete("/:id", protect, sellerOrAdmin, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ message: "Invalid product ID." });
     }
 
-    const product = await Product.findByIdAndDelete(req.params.id);
+    const product = await Product.findById(req.params.id);
     if (!product) {
       return res.status(404).json({ message: "Product not found." });
     }
+
+    const isAdmin = req.user.role === "admin";
+    const isOwner = String(product.seller) === String(req.user._id);
+    if (!isAdmin && !isOwner) {
+      return res.status(403).json({ message: "You can delete only your own products." });
+    }
+
+    await Product.findByIdAndDelete(req.params.id);
+
+    await logAudit({
+      actor: req.user._id,
+      actorRole: req.user.role,
+      action: "product_deleted",
+      targetType: "product",
+      targetId: req.params.id,
+      details: {
+        name: product.name,
+      },
+    });
 
     return sendSuccess(res, 200, "Product deleted successfully.");
   } catch (error) {

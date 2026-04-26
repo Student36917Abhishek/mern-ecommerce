@@ -43,7 +43,7 @@ export function RegisterPage() {
     <section className="auth-screen">
       <div className="auth-card">
         <p className="eyebrow">Create your account</p>
-        <h1>Set up the user journey from the first click.</h1>
+        <h1>Create your Shopora account.</h1>
         <form className="auth-form" onSubmit={handleSubmit}>
           <label>
             Full name
@@ -72,7 +72,7 @@ export function RegisterPage() {
             </div>
           </label>
 
-          <p className="form-help">A demo account will be enough for the Day 19 product flow.</p>
+          <p className="form-help">Your account lets you use cart, checkout, and orders.</p>
 
           {error ? <p className="form-error">{error}</p> : null}
 

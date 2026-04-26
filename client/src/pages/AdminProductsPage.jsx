@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
+import fallbackImage from '../assets/hero.png'
+import { AdminNav } from '../components/AdminNav'
 import {
   createProduct,
   deleteProduct,
+  fetchMyProducts,
   fetchProducts,
   updateProduct,
 } from '../services/products'
@@ -21,7 +24,8 @@ const formatMoney = (value) => new Intl.NumberFormat('en-IN', {
   maximumFractionDigits: 0,
 }).format(Number(value) || 0)
 
-export function AdminProductsPage() {
+export function AdminProductsPage({ mode = 'admin' }) {
+  const isSellerMode = mode === 'seller'
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -30,11 +34,14 @@ export function AdminProductsPage() {
   const [statusMessage, setStatusMessage] = useState('')
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [formData, setFormData] = useState(initialForm)
+  const [inventoryFilter, setInventoryFilter] = useState('all')
 
   const loadProducts = async () => {
     try {
       setLoading(true)
-      const data = await fetchProducts({ limit: 100, sort: 'newest' })
+      const data = isSellerMode
+        ? await fetchMyProducts()
+        : await fetchProducts({ limit: 100, sort: 'newest' })
       setProducts(data.products || [])
       setError('')
     } catch (requestError) {
@@ -46,7 +53,7 @@ export function AdminProductsPage() {
 
   useEffect(() => {
     loadProducts()
-  }, [])
+  }, [isSellerMode])
 
   const isEditing = Boolean(selectedProduct)
 
@@ -54,6 +61,27 @@ export function AdminProductsPage() {
     () => (isEditing ? `Edit ${selectedProduct?.name || 'product'}` : 'Add a new product'),
     [isEditing, selectedProduct],
   )
+
+  const inventorySummary = useMemo(
+    () => ({
+      total: products.length,
+      lowStock: products.filter((product) => product.stock > 0 && product.stock <= 5).length,
+      outOfStock: products.filter((product) => product.stock === 0).length,
+    }),
+    [products],
+  )
+
+  const filteredProducts = useMemo(() => {
+    if (inventoryFilter === 'low') {
+      return products.filter((product) => product.stock > 0 && product.stock <= 5)
+    }
+
+    if (inventoryFilter === 'out') {
+      return products.filter((product) => product.stock === 0)
+    }
+
+    return products
+  }, [inventoryFilter, products])
 
   const handleFieldChange = (event) => {
     const { name, value } = event.target
@@ -79,6 +107,15 @@ export function AdminProductsPage() {
     setStatusMessage('Editing product from list.')
   }
 
+  const buildProductPayload = (source) => ({
+    name: source.name.trim(),
+    description: source.description.trim(),
+    price: Number(source.price),
+    category: source.category.trim(),
+    stock: Number(source.stock),
+    image: source.image.trim(),
+  })
+
   const handleSubmit = async (event) => {
     event.preventDefault()
 
@@ -87,14 +124,7 @@ export function AdminProductsPage() {
       setError('')
       setStatusMessage('')
 
-      const payload = {
-        name: formData.name.trim(),
-        description: formData.description.trim(),
-        price: Number(formData.price),
-        category: formData.category.trim(),
-        stock: Number(formData.stock),
-        image: formData.image.trim(),
-      }
+      const payload = buildProductPayload(formData)
 
       if (isEditing) {
         await updateProduct(selectedProduct._id, payload)
@@ -110,6 +140,28 @@ export function AdminProductsPage() {
       setError(requestError?.response?.data?.message || 'Unable to save product.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleStockAdjust = async (product, nextStock) => {
+    try {
+      setBusyProductId(product._id)
+      setError('')
+      setStatusMessage('')
+      await updateProduct(product._id, {
+        name: product.name,
+        description: product.description,
+        price: product.price,
+        category: product.category || '',
+        stock: Math.max(Number(nextStock) || 0, 0),
+        image: product.image || '',
+      })
+      await loadProducts()
+      setStatusMessage(`${product.name} stock updated.`)
+    } catch (requestError) {
+      setError(requestError?.response?.data?.message || 'Unable to update stock.')
+    } finally {
+      setBusyProductId('')
     }
   }
 
@@ -144,19 +196,32 @@ export function AdminProductsPage() {
 
   return (
     <section className="admin-page">
+      {!isSellerMode ? <AdminNav /> : null}
+
       <header className="catalog-hero">
         <div>
-          <p className="eyebrow">Day 23 admin UI</p>
-          <h1>Manage products from one focused admin workspace.</h1>
+          <p className="eyebrow">{isSellerMode ? 'Seller workspace' : 'Shopora admin'}</p>
+          <h1>{isSellerMode ? 'Manage your own products and inventory.' : 'Manage products, pricing, and inventory.'}</h1>
           <p className="hero-text">
-            Add new catalog items, edit existing inventory, and remove products with a simple
-            backend-connected admin panel.
+            {isSellerMode
+              ? 'Add products for your shop, update listing details, and keep stock updated.'
+              : 'Add new products, update catalog details, remove products, and adjust stock quickly.'}
           </p>
         </div>
 
-        <div className="admin-summary-pill">
-          <strong>{products.length}</strong>
-          <span>products managed</span>
+        <div className="admin-summary-row">
+          <div className="admin-summary-pill">
+            <strong>{inventorySummary.total}</strong>
+            <span>products</span>
+          </div>
+          <div className="admin-summary-pill">
+            <strong>{inventorySummary.lowStock}</strong>
+            <span>low stock</span>
+          </div>
+          <div className="admin-summary-pill">
+            <strong>{inventorySummary.outOfStock}</strong>
+            <span>sold out</span>
+          </div>
         </div>
       </header>
 
@@ -218,21 +283,46 @@ export function AdminProductsPage() {
               <p className="eyebrow">Catalog inventory</p>
               <h2>Existing products</h2>
             </div>
+            <select value={inventoryFilter} onChange={(event) => setInventoryFilter(event.target.value)}>
+              <option value="all">All stock</option>
+              <option value="low">Low stock</option>
+              <option value="out">Sold out</option>
+            </select>
           </div>
 
           <div className="admin-product-list">
-            {products.map((product) => (
+            {filteredProducts.map((product) => (
               <article key={product._id} className="admin-product-row">
-                <img src={product.image || 'https://placehold.co/96x96?text=P'} alt={product.name} />
+                <img
+                  src={product.image || fallbackImage}
+                  alt={product.name}
+                  onError={(event) => {
+                    event.currentTarget.src = fallbackImage
+                  }}
+                />
                 <div className="admin-product-row__content">
                   <h3>{product.name}</h3>
                   <p>{product.category || 'General'}</p>
-                  <span>
-                    {formatMoney(product.price)} · Stock {product.stock}
-                  </span>
+                  <span>{formatMoney(product.price)} - Stock {product.stock}</span>
                 </div>
 
                 <div className="admin-product-row__actions">
+                  <button
+                    type="button"
+                    className="button button--ghost button--compact"
+                    onClick={() => handleStockAdjust(product, product.stock - 1)}
+                    disabled={busyProductId === product._id || product.stock <= 0}
+                  >
+                    -1
+                  </button>
+                  <button
+                    type="button"
+                    className="button button--ghost button--compact"
+                    onClick={() => handleStockAdjust(product, product.stock + 1)}
+                    disabled={busyProductId === product._id}
+                  >
+                    +1
+                  </button>
                   <button
                     type="button"
                     className="button button--ghost button--compact"
@@ -252,6 +342,13 @@ export function AdminProductsPage() {
               </article>
             ))}
           </div>
+
+          {!filteredProducts.length ? (
+            <div className="empty-cart">
+              <p className="eyebrow">No products</p>
+              <h2>No products match this inventory filter.</h2>
+            </div>
+          ) : null}
         </aside>
       </div>
     </section>

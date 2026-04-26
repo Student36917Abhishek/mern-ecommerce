@@ -1,7 +1,7 @@
 import { Link, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
-export function ProtectedRoute({ children, requiredRole }) {
+export function ProtectedRoute({ children, requiredRole, requiredRoles }) {
   const { isAuthenticated, loading, user } = useAuth()
   const location = useLocation()
 
@@ -13,16 +13,27 @@ export function ProtectedRoute({ children, requiredRole }) {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 
-  if (requiredRole && user?.role !== requiredRole) {
+  const allowedRoles = Array.isArray(requiredRoles) && requiredRoles.length
+    ? requiredRoles
+    : requiredRole
+      ? [requiredRole]
+      : []
+
+  if (allowedRoles.length > 0 && !allowedRoles.includes(user?.role)) {
     return (
       <section className="auth-screen">
         <div className="auth-card">
           <p className="eyebrow">Access denied</p>
           <h1>You do not have permission to open this page.</h1>
           <p className="hero-text">This area is restricted to admin users.</p>
-          <Link to="/app" className="button button--solid">
-            Go to dashboard
-          </Link>
+          <div className="hero-actions">
+            <Link to="/sell" className="button button--solid">
+              Become a seller
+            </Link>
+            <Link to="/app" className="button button--ghost">
+              Go to dashboard
+            </Link>
+          </div>
         </div>
       </section>
     )

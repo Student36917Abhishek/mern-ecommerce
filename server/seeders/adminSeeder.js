@@ -9,6 +9,7 @@ dotenv.config({ path: path.resolve(__dirname, "../.env") });
 const ADMIN_NAME = process.env.ADMIN_NAME || "Project Admin";
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@ecommerce.com";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Admin@123";
+const RESET_ADMIN_PASSWORD = String(process.env.RESET_ADMIN_PASSWORD || "true").toLowerCase() !== "false";
 
 const seedAdmin = async () => {
   try {
@@ -33,8 +34,14 @@ const seedAdmin = async () => {
         user.role = "admin";
       }
       user.isEmailVerified = true;
+      if (RESET_ADMIN_PASSWORD) {
+        user.password = ADMIN_PASSWORD;
+      }
       await user.save();
       console.log(`Existing user promoted/confirmed as admin: ${ADMIN_EMAIL}`);
+      if (RESET_ADMIN_PASSWORD) {
+        console.log(`Password reset to: ${ADMIN_PASSWORD}`);
+      }
     }
 
     await mongoose.connection.close();

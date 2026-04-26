@@ -10,6 +10,11 @@ export async function fetchProductById(productId) {
   return data
 }
 
+export async function fetchMyProducts() {
+  const { data } = await api.get('/products/mine')
+  return data
+}
+
 export async function createProduct(payload) {
   const { data } = await api.post('/products', payload)
   return data

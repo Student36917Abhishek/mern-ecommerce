@@ -67,10 +67,10 @@ export function MyOrdersPage() {
     <section className="orders-page">
       <header className="catalog-hero">
         <div>
-          <p className="eyebrow">Day 22 orders UI</p>
-          <h1>Track your order history in one clean, readable timeline.</h1>
+          <p className="eyebrow">My orders</p>
+          <h1>Track your Shopora order history.</h1>
           <p className="hero-text">
-            This page uses the logged-in user order API and gives a quick summary of each purchase.
+            Review recent purchases, payment status, delivery status, and order details.
           </p>
         </div>
 

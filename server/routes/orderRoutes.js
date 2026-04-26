@@ -5,6 +5,7 @@ const Order = require("../models/Order");
 const Product = require("../models/Product");
 const { protect, adminOnly } = require("../middleware/authMiddleware");
 const { sendSuccess } = require("../utils/apiResponse");
+const { logAudit } = require("../utils/auditLogger");
 
 const router = express.Router();
 const TAX_RATE = 0.18;
@@ -203,6 +204,7 @@ router.put("/admin/:id/status", protect, adminOnly, async (req, res) => {
       return res.status(404).json({ message: "Order not found." });
     }
 
+    const previousStatus = order.orderStatus;
     order.orderStatus = orderStatus;
 
     if (orderStatus === "delivered") {
@@ -212,6 +214,18 @@ router.put("/admin/:id/status", protect, adminOnly, async (req, res) => {
     }
 
     await order.save();
+
+    await logAudit({
+      actor: req.user._id,
+      actorRole: req.user.role,
+      action: "order_status_updated",
+      targetType: "order",
+      targetId: order._id,
+      details: {
+        previousStatus,
+        nextStatus: orderStatus,
+      },
+    });
 
     return sendSuccess(res, 200, "Order status updated successfully.", { order });
   } catch (error) {
@@ -231,7 +245,8 @@ router.get("/:id", protect, async (req, res) => {
     }
 
     const isOwner = String(order.user) === String(req.user._id);
-    if (!isOwner) {
+    const isAdmin = req.user.role === "admin";
+    if (!isOwner && !isAdmin) {
       return res.status(403).json({ message: "Access denied for this order." });
     }
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { fetchCart } from '../services/cart'
 import { fetchOrderMeta, placeOrder } from '../services/orders'
 
@@ -21,7 +21,6 @@ const initialAddress = {
 }
 
 export function CheckoutPage() {
-  const navigate = useNavigate()
   const [cart, setCart] = useState(null)
   const [meta, setMeta] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -127,11 +126,10 @@ export function CheckoutPage() {
     <section className="checkout-page">
       <header className="catalog-hero">
         <div>
-          <p className="eyebrow">Day 21 checkout UI</p>
-          <h1>Capture shipping details and place the order from a clean checkout screen.</h1>
+          <p className="eyebrow">Checkout</p>
+          <h1>Enter shipping details and place your order.</h1>
           <p className="hero-text">
-            The checkout flow uses the backend cart totals and places the order as a persisted
-            snapshot.
+            Shopora saves your order, updates product stock, and clears your cart after checkout.
           </p>
         </div>
 
@@ -149,15 +147,18 @@ export function CheckoutPage() {
           <p className="eyebrow">Order placed</p>
           <h2>Order #{String(orderResult._id).slice(-6).toUpperCase()} is confirmed.</h2>
           <p>
-            Your order snapshot is saved and the cart is cleared. The orders page will be built next.
+            Your order is saved and your cart is now clear.
           </p>
 
           <div className="checkout-success__actions">
             <Link to="/products" className="button button--ghost">
               Continue browsing
             </Link>
-            <Link to="/cart" className="button button--solid">
-              Back to cart
+            <Link to="/orders" className="button button--solid">
+              View orders
+            </Link>
+            <Link to={`/orders/${orderResult._id}`} className="button button--ghost">
+              Order details
             </Link>
           </div>
         </div>

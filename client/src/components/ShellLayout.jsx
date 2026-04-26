@@ -9,15 +9,12 @@ export function ShellLayout() {
 
   return (
     <div className="app-shell">
-      <div className="background-orb background-orb--one" />
-      <div className="background-orb background-orb--two" />
-
       <header className="topbar">
         <NavLink to="/" className="brand">
-          <span className="brand-mark">M</span>
+          <span className="brand-mark">S</span>
           <span>
-            <strong>Mosaic Mart</strong>
-            <small>Internship MVP</small>
+            <strong>Shopora</strong>
+            <small>Your everyday store</small>
           </span>
         </NavLink>
 
@@ -35,23 +32,26 @@ export function ShellLayout() {
             Orders
           </NavLink>
           {user?.role === 'admin' ? (
-            <NavLink to="/admin/products" className={navLinkClass}>
+            <NavLink to="/admin" className={navLinkClass}>
               Admin
             </NavLink>
+          ) : user?.role === 'seller' ? (
+            <NavLink to="/seller/products" className={navLinkClass}>
+              Seller
+            </NavLink>
+          ) : isAuthenticated ? (
+            <NavLink to="/sell" className={navLinkClass}>
+              Sell
+            </NavLink>
           ) : null}
-          <NavLink to="/login" className={navLinkClass}>
-            Login
-          </NavLink>
-          <NavLink to="/register" className={navLinkClass}>
-            Register
-          </NavLink>
-          <NavLink to="/app" className={navLinkClass}>
-            Dashboard
-          </NavLink>
+          {isAuthenticated ? (
+            <NavLink to="/app" className={navLinkClass}>
+              Account
+            </NavLink>
+          ) : null}
         </nav>
 
         <div className="topbar-actions">
-          <span className="demo-chip">Day 25 ready</span>
           {isAuthenticated ? (
             <>
               <span className="user-chip">{user?.name || 'User'}</span>
@@ -60,9 +60,14 @@ export function ShellLayout() {
               </button>
             </>
           ) : (
-            <NavLink to="/register" className="button button--solid">
-              Start building
-            </NavLink>
+            <>
+              <NavLink to="/login" className="button button--ghost">
+                Sign in
+              </NavLink>
+              <NavLink to="/register" className="button button--solid">
+                Register
+              </NavLink>
+            </>
           )}
         </div>
       </header>

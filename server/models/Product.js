@@ -32,6 +32,12 @@ const productSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    seller: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+      index: true,
+    },
   },
   { timestamps: true }
 );

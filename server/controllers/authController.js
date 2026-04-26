@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 const User = require("../models/User");
 const { generateAccessToken, generateRefreshToken } = require("../utils/generateToken");
+const { logAudit } = require("../utils/auditLogger");
 
 const sanitizeUser = (user) => ({
 id: user._id,
@@ -9,6 +10,7 @@ email: user.email,
 role: user.role,
 avatar: user.avatar,
 isEmailVerified: user.isEmailVerified,
+sellerRequest: user.sellerRequest,
 addresses: user.addresses
 });
 
@@ -146,6 +148,56 @@ const logoutUser = async (req, res) => {
 return res.status(200).json({ message: "Logout successful. Please discard tokens on client." });
 };
 
+const submitSellerRequest = async (req, res) => {
+try {
+if (["admin", "seller"].includes(req.user.role)) {
+return res.status(200).json({
+message: "Your account already has seller-level access.",
+user: sanitizeUser(req.user)
+});
+}
+
+if (req.user.sellerRequest?.status === "pending") {
+return res.status(400).json({ message: "Your seller request is already pending approval." });
+}
+
+const note = typeof req.body?.note === "string" ? req.body.note.trim() : "";
+
+const user = await User.findByIdAndUpdate(
+req.user._id,
+{
+sellerRequest: {
+status: "pending",
+note,
+requestedAt: new Date(),
+reviewedAt: null,
+reviewedBy: null,
+reviewNote: "",
+},
+},
+{ returnDocument: "after", runValidators: true }
+);
+
+await logAudit({
+actor: req.user._id,
+actorRole: req.user.role,
+action: "seller_request_submitted",
+targetType: "user",
+targetId: req.user._id,
+details: {
+note,
+},
+});
+
+return res.status(200).json({
+message: "Seller request submitted. An admin will review it soon.",
+user: sanitizeUser(user)
+});
+} catch (error) {
+return res.status(500).json({ message: error.message });
+}
+};
+
 module.exports = {
 registerUser,
 loginUser,
@@ -154,5 +206,6 @@ updateProfile,
 forgotPassword,
 resetPassword,
 verifyEmail,
-logoutUser
+logoutUser,
+submitSellerRequest
 };

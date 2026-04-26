@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import api from '../services/api'
 
 const AuthContext = createContext(null)
@@ -7,6 +7,46 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [token, setToken] = useState(() => localStorage.getItem('mern_ecommerce_token') || '')
   const [loading, setLoading] = useState(true)
+
+  const persistAuth = useCallback((nextToken, nextUser) => {
+    setToken(nextToken)
+    setUser(nextUser)
+    localStorage.setItem('mern_ecommerce_token', nextToken)
+    localStorage.setItem('mern_ecommerce_user', JSON.stringify(nextUser))
+  }, [])
+
+  const clearAuth = useCallback(() => {
+    setToken('')
+    setUser(null)
+    localStorage.removeItem('mern_ecommerce_token')
+    localStorage.removeItem('mern_ecommerce_user')
+  }, [])
+
+  const signIn = useCallback(async (credentials) => {
+    const { data } = await api.post('/auth/login', credentials)
+    persistAuth(data.accessToken, data.user)
+    return data
+  }, [persistAuth])
+
+  const signUp = useCallback(async (payload) => {
+    const { data } = await api.post('/auth/register', payload)
+    persistAuth(data.accessToken, data.user)
+    return data
+  }, [persistAuth])
+
+  const updateProfile = useCallback(async (payload) => {
+    const { data } = await api.put('/auth/profile', payload)
+    setUser(data.user)
+    localStorage.setItem('mern_ecommerce_user', JSON.stringify(data.user))
+    return data
+  }, [])
+
+  const submitSellerRequest = useCallback(async (payload = {}) => {
+    const { data } = await api.post('/auth/seller-request', payload)
+    setUser(data.user)
+    localStorage.setItem('mern_ecommerce_user', JSON.stringify(data.user))
+    return data
+  }, [])
 
   useEffect(() => {
     let isMounted = true
@@ -54,33 +94,7 @@ export function AuthProvider({ children }) {
     return () => {
       isMounted = false
     }
-  }, [token])
-
-  const persistAuth = (nextToken, nextUser) => {
-    setToken(nextToken)
-    setUser(nextUser)
-    localStorage.setItem('mern_ecommerce_token', nextToken)
-    localStorage.setItem('mern_ecommerce_user', JSON.stringify(nextUser))
-  }
-
-  const clearAuth = () => {
-    setToken('')
-    setUser(null)
-    localStorage.removeItem('mern_ecommerce_token')
-    localStorage.removeItem('mern_ecommerce_user')
-  }
-
-  const signIn = async (credentials) => {
-    const { data } = await api.post('/auth/login', credentials)
-    persistAuth(data.accessToken, data.user)
-    return data
-  }
-
-  const signUp = async (payload) => {
-    const { data } = await api.post('/auth/register', payload)
-    persistAuth(data.accessToken, data.user)
-    return data
-  }
+  }, [clearAuth, token])
 
   const value = useMemo(
     () => ({
@@ -90,9 +104,11 @@ export function AuthProvider({ children }) {
       isAuthenticated: Boolean(token && user),
       signIn,
       signUp,
+      updateProfile,
+      submitSellerRequest,
       signOut: clearAuth,
     }),
-    [loading, token, user],
+    [clearAuth, loading, signIn, signUp, submitSellerRequest, token, updateProfile, user],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

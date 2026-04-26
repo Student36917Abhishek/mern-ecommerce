@@ -1,63 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { fetchProducts } from '../services/products'
 import { addItemToCart } from '../services/cart'
 import { useAuth } from '../context/AuthContext'
+import { ProductCard } from '../components/ProductCard'
 
 const catalogTone = [
-  'Curated drops',
-  'Local demo inventory',
-  'Backend-powered browsing',
+  'Fresh deals',
+  'Fast checkout',
+  'Secure account',
 ]
-
-const formatPrice = (value) => new Intl.NumberFormat('en-IN', {
-  style: 'currency',
-  currency: 'INR',
-  maximumFractionDigits: 0,
-}).format(Number(value) || 0)
-
-function ProductCard({ product, onAddToCart }) {
-  const availability = product.stock > 0 ? `${product.stock} in stock` : 'Sold out'
-
-  return (
-    <article className="product-card">
-      <Link to={`/products/${product._id}`} className="product-card__media">
-        <img src={product.image || 'https://placehold.co/640x480?text=Product'} alt={product.name} />
-      </Link>
-
-      <div className="product-card__body">
-        <div className="product-card__meta">
-          <span>{product.category || 'General'}</span>
-          <span className={product.stock > 0 ? 'badge badge--good' : 'badge badge--danger'}>
-            {availability}
-          </span>
-        </div>
-
-        <h2>
-          <Link to={`/products/${product._id}`}>{product.name}</Link>
-        </h2>
-        <p>{product.description}</p>
-
-        <div className="product-card__footer">
-          <strong>{formatPrice(product.price)}</strong>
-          <div className="product-card__actions">
-            <Link className="button button--ghost button--compact" to={`/products/${product._id}`}>
-              View details
-            </Link>
-            <button
-              type="button"
-              className="button button--solid button--compact"
-              onClick={() => onAddToCart(product)}
-              disabled={product.stock <= 0}
-            >
-              Add to cart
-            </button>
-          </div>
-        </div>
-      </div>
-    </article>
-  )
-}
 
 export function ProductsPage() {
   const navigate = useNavigate()
@@ -127,11 +79,10 @@ export function ProductsPage() {
     <section className="catalog-page">
       <header className="catalog-hero">
         <div>
-          <p className="eyebrow">Day 19 product listing</p>
-          <h1>Browse the catalog through a bold, demo-ready storefront.</h1>
+          <p className="eyebrow">Shopora catalog</p>
+          <h1>Shop daily essentials, electronics, fashion, and more.</h1>
           <p className="hero-text">
-            This page pulls products from the backend and renders a focused shopping grid with
-            price, stock, and category context.
+            Browse live products from your backend, add items to cart, and continue to checkout.
           </p>
         </div>
 
@@ -177,5 +128,3 @@ export function ProductsPage() {
     </section>
   )
 }
-
-export { ProductCard, formatPrice }

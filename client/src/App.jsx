@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { ShellLayout } from './components/ShellLayout'
@@ -12,7 +12,12 @@ import { CartPage } from './pages/CartPage'
 import { CheckoutPage } from './pages/CheckoutPage'
 import { MyOrdersPage } from './pages/MyOrdersPage'
 import { OrderDetailPage } from './pages/OrderDetailPage'
+import { AdminDashboardPage } from './pages/AdminDashboardPage'
+import { AdminOrdersPage } from './pages/AdminOrdersPage'
 import { AdminProductsPage } from './pages/AdminProductsPage'
+import { AdminUsersPage } from './pages/AdminUsersPage'
+import { SellerHubPage } from './pages/SellerHubPage'
+import { SellerProductsPage } from './pages/SellerProductsPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 
 function App() {
@@ -66,10 +71,50 @@ function App() {
             }
           />
           <Route
+            path="/sell"
+            element={
+              <ProtectedRoute>
+                <SellerHubPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/seller/products"
+            element={
+              <ProtectedRoute requiredRoles={['seller', 'admin']}>
+                <SellerProductsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminDashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/admin/products"
             element={
               <ProtectedRoute requiredRole="admin">
                 <AdminProductsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/orders"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminOrdersPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/users"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminUsersPage />
               </ProtectedRoute>
             }
           />

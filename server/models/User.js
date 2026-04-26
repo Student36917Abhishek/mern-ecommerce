@@ -70,8 +70,38 @@ const userSchema = new mongoose.Schema(
         },
         role: {
             type: String,
-            enum: ["user", "admin"],
+            enum: ["user", "seller", "admin"],
             default: "user",
+        },
+        sellerRequest: {
+            status: {
+                type: String,
+                enum: ["none", "pending", "approved", "rejected"],
+                default: "none",
+            },
+            note: {
+                type: String,
+                trim: true,
+                default: "",
+            },
+            requestedAt: {
+                type: Date,
+                default: null,
+            },
+            reviewedAt: {
+                type: Date,
+                default: null,
+            },
+            reviewedBy: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "User",
+                default: null,
+            },
+            reviewNote: {
+                type: String,
+                trim: true,
+                default: "",
+            },
         },
         avatar: {
             type: String,

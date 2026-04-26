@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import fallbackImage from '../assets/hero.png'
 import {
   clearCart,
   fetchCart,
@@ -94,11 +95,10 @@ export function CartPage() {
     <section className="cart-page">
       <header className="catalog-hero">
         <div>
-          <p className="eyebrow">Day 20 cart UI</p>
-          <h1>Review items, adjust quantities, and keep checkout-ready totals in view.</h1>
+          <p className="eyebrow">Shopping cart</p>
+          <h1>Review your items before checkout.</h1>
           <p className="hero-text">
-            This cart page is wired directly to the backend cart APIs and supports quantity edits,
-            removal, and clearing the basket.
+            Update quantities, remove products, and confirm your order total.
           </p>
         </div>
 
@@ -116,7 +116,13 @@ export function CartPage() {
           <div className="cart-items">
             {items.map((item) => (
               <article key={String(item.product)} className="cart-item">
-                <img src={item.image || 'https://placehold.co/320x240?text=Item'} alt={item.name} />
+                <img
+                  src={item.image || fallbackImage}
+                  alt={item.name}
+                  onError={(event) => {
+                    event.currentTarget.src = fallbackImage
+                  }}
+                />
 
                 <div className="cart-item__content">
                   <Link to={`/products/${item.product}`}>
@@ -198,7 +204,7 @@ export function CartPage() {
             </div>
 
             <p className="form-help">
-              The checkout step will use the same backend totals and quantities.
+              Shipping is free on orders above Rs. 1,000.
             </p>
           </aside>
         </div>

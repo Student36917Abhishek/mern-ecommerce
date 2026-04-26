@@ -3,7 +3,7 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export function LoginPage() {
-  const { signIn, isAuthenticated, loading } = useAuth()
+  const { signIn, isAuthenticated, loading, user } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [error, setError] = useState('')
@@ -15,7 +15,8 @@ export function LoginPage() {
   }
 
   if (isAuthenticated) {
-    return <Navigate to="/app" replace />
+    const roleHome = user?.role === 'admin' ? '/admin' : user?.role === 'seller' ? '/seller/products' : '/app'
+    return <Navigate to={roleHome} replace />
   }
 
   const handleSubmit = async (event) => {
@@ -30,8 +31,13 @@ export function LoginPage() {
     }
 
     try {
-      await signIn(payload)
-      navigate(location.state?.from?.pathname || '/app', { replace: true })
+      const data = await signIn(payload)
+      const roleHome = data?.user?.role === 'admin'
+        ? '/admin'
+        : data?.user?.role === 'seller'
+          ? '/seller/products'
+          : '/app'
+      navigate(location.state?.from?.pathname || roleHome, { replace: true })
     } catch (requestError) {
       setError(requestError?.response?.data?.message || 'Login failed. Try again.')
     } finally {
@@ -43,7 +49,7 @@ export function LoginPage() {
     <section className="auth-screen">
       <div className="auth-card">
         <p className="eyebrow">Welcome back</p>
-        <h1>Sign in to continue the store demo.</h1>
+        <h1>Sign in to your Shopora account.</h1>
         <form className="auth-form" onSubmit={handleSubmit}>
           <label>
             Email
@@ -69,7 +75,10 @@ export function LoginPage() {
             </div>
           </label>
 
-          <p className="form-help">Use the account you created in the earlier backend days.</p>
+          <p className="form-help">Use your registered email and password.</p>
+          <p className="form-help">
+            Admin login uses the same form. Default admin: <strong>admin@ecommerce.com</strong> / <strong>Admin@123</strong>
+          </p>
 
           {error ? <p className="form-error">{error}</p> : null}
 
