@@ -5,6 +5,7 @@ import { addItemToCart } from '../services/cart'
 import { fetchProductById } from '../services/products'
 import { useAuth } from '../context/AuthContext'
 import { formatPrice } from '../utils/format'
+import { resolveImageUrl } from '../utils/image'
 
 const purchaseBenefits = [
   {
@@ -123,7 +124,7 @@ export function ProductDetailPage() {
 
       <div className="product-detail__shell">
         <div className="product-detail__media">
-          <img src={product.image || fallbackImage} alt={product.name} onError={handleImageError} />
+          <img src={resolveImageUrl(product.image) || fallbackImage} alt={product.name} onError={handleImageError} />
         </div>
 
         <div className="product-detail__content">

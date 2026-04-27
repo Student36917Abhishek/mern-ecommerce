@@ -1,4 +1,5 @@
 const express = require("express");
+const path = require("path");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const helmet = require("helmet");
@@ -45,6 +46,16 @@ sanitizeObject(req.body);
 sanitizeObject(req.params);
 next();
 });
+
+// Serve uploaded images and allow cross-origin embedding for frontend dev origin.
+app.use(
+"/uploads",
+(req, res, next) => {
+res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+next();
+},
+express.static(path.join(__dirname, "uploads"))
+);
 
 app.get("/", (req, res) => {
 	return sendSuccess(res, 200, "Ecommerce API running.");

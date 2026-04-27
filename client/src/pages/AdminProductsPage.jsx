@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import fallbackImage from '../assets/hero.png'
 import { AdminNav } from '../components/AdminNav'
 import {
@@ -8,6 +8,7 @@ import {
   fetchProducts,
   updateProduct,
 } from '../services/products'
+import { resolveImageUrl } from '../utils/image'
 
 const initialForm = {
   name: '',
@@ -16,6 +17,7 @@ const initialForm = {
   category: '',
   stock: '',
   image: '',
+  imageFile: null,
 }
 
 const formatMoney = (value) => new Intl.NumberFormat('en-IN', {
@@ -26,6 +28,7 @@ const formatMoney = (value) => new Intl.NumberFormat('en-IN', {
 
 export function AdminProductsPage({ mode = 'admin' }) {
   const isSellerMode = mode === 'seller'
+  const fileInputRef = useRef(null)
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -35,6 +38,8 @@ export function AdminProductsPage({ mode = 'admin' }) {
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [formData, setFormData] = useState(initialForm)
   const [inventoryFilter, setInventoryFilter] = useState('all')
+  const [isDraggingImage, setIsDraggingImage] = useState(false)
+  const [localImagePreview, setLocalImagePreview] = useState('')
 
   const loadProducts = async () => {
     try {
@@ -55,7 +60,23 @@ export function AdminProductsPage({ mode = 'admin' }) {
     loadProducts()
   }, [isSellerMode])
 
+  useEffect(() => {
+    if (!formData.imageFile) {
+      setLocalImagePreview('')
+      return undefined
+    }
+
+    const objectUrl = URL.createObjectURL(formData.imageFile)
+    setLocalImagePreview(objectUrl)
+
+    return () => {
+      URL.revokeObjectURL(objectUrl)
+    }
+  }, [formData.imageFile])
+
   const isEditing = Boolean(selectedProduct)
+  const activeImagePreview = localImagePreview || resolveImageUrl(formData.image)
+  const hasAnyImage = Boolean(formData.imageFile || formData.image)
 
   const formTitle = useMemo(
     () => (isEditing ? `Edit ${selectedProduct?.name || 'product'}` : 'Add a new product'),
@@ -83,18 +104,87 @@ export function AdminProductsPage({ mode = 'admin' }) {
     return products
   }, [inventoryFilter, products])
 
+  const handleImageFileSelection = (file) => {
+    if (!file) {
+      return
+    }
+
+    if (!file.type.startsWith('image/')) {
+      setError('Please select a valid image file.')
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image must be less than 5MB.')
+      return
+    }
+
+    setError('')
+    setFormData((current) => ({ ...current, imageFile: file }))
+  }
+
   const handleFieldChange = (event) => {
-    const { name, value } = event.target
+    const { name, type, value, files } = event.target
+    if (type === 'file') {
+      handleImageFileSelection(files?.[0])
+      return
+    }
+
     setFormData((current) => ({ ...current, [name]: value }))
   }
 
+  const openImagePicker = () => {
+    fileInputRef.current?.click()
+  }
+
+  const clearSelectedFile = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+    setFormData((current) => ({ ...current, imageFile: null }))
+  }
+
+  const removeCurrentImage = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+    setFormData((current) => ({ ...current, imageFile: null, image: '' }))
+    setStatusMessage('Product image removed from form.')
+  }
+
+  const handleImageDrop = (event) => {
+    event.preventDefault()
+    event.stopPropagation()
+    setIsDraggingImage(false)
+
+    const droppedFile = event.dataTransfer?.files?.[0]
+    handleImageFileSelection(droppedFile)
+  }
+
+  const handleImageDragOver = (event) => {
+    event.preventDefault()
+    setIsDraggingImage(true)
+  }
+
+  const handleImageDragLeave = (event) => {
+    event.preventDefault()
+    setIsDraggingImage(false)
+  }
+
   const resetForm = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
     setSelectedProduct(null)
     setFormData(initialForm)
+    setIsDraggingImage(false)
     setStatusMessage('')
   }
 
   const beginEdit = (product) => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
     setSelectedProduct(product)
     setFormData({
       name: product.name || '',
@@ -103,6 +193,7 @@ export function AdminProductsPage({ mode = 'admin' }) {
       category: product.category || '',
       stock: String(product.stock ?? ''),
       image: product.image || '',
+      imageFile: null,
     })
     setStatusMessage('Editing product from list.')
   }
@@ -124,7 +215,19 @@ export function AdminProductsPage({ mode = 'admin' }) {
       setError('')
       setStatusMessage('')
 
-      const payload = buildProductPayload(formData)
+      // Use FormData if there's a file, otherwise use regular JSON
+      let payload
+      if (formData.imageFile) {
+        payload = new FormData()
+        payload.append('name', formData.name.trim())
+        payload.append('description', formData.description.trim())
+        payload.append('price', Number(formData.price))
+        payload.append('category', formData.category.trim())
+        payload.append('stock', Number(formData.stock))
+        payload.append('image', formData.imageFile)
+      } else {
+        payload = buildProductPayload(formData)
+      }
 
       if (isEditing) {
         await updateProduct(selectedProduct._id, payload)
@@ -265,8 +368,62 @@ export function AdminProductsPage({ mode = 'admin' }) {
               <textarea name="description" rows="5" value={formData.description} onChange={handleFieldChange} required />
             </label>
             <label className="admin-form-grid__full">
-              Image URL
-              <input name="image" value={formData.image} onChange={handleFieldChange} placeholder="https://..." />
+              Product Image
+              <div className="image-upload-container">
+                <div
+                  className={isDraggingImage ? 'image-dropzone image-dropzone--active' : 'image-dropzone'}
+                  onDrop={handleImageDrop}
+                  onDragOver={handleImageDragOver}
+                  onDragLeave={handleImageDragLeave}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    name="imageFile"
+                    accept="image/*"
+                    onChange={handleFieldChange}
+                  />
+                  <p><strong>Drag and drop an image here</strong> or choose from your device.</p>
+                  <span>Supported: JPG, PNG, GIF, WEBP. Max size: 5MB.</span>
+                </div>
+
+                <div className="image-upload-actions">
+                  <button type="button" className="button button--ghost button--compact" onClick={openImagePicker}>
+                    {hasAnyImage ? 'Change image' : 'Choose image'}
+                  </button>
+                  <button
+                    type="button"
+                    className="button button--ghost button--compact"
+                    onClick={removeCurrentImage}
+                    disabled={!hasAnyImage}
+                  >
+                    Remove image
+                  </button>
+                  {formData.imageFile ? (
+                    <button
+                      type="button"
+                      className="button button--ghost button--compact"
+                      onClick={clearSelectedFile}
+                    >
+                      Clear selected file
+                    </button>
+                  ) : null}
+                </div>
+
+                {formData.imageFile ? <p className="image-file-meta">Selected: {formData.imageFile.name}</p> : null}
+
+                {activeImagePreview ? (
+                  <div className="image-preview">
+                    <img
+                      src={activeImagePreview}
+                      alt="Preview"
+                      onError={(e) => {
+                        e.currentTarget.src = fallbackImage
+                      }}
+                    />
+                  </div>
+                ) : null}
+              </div>
             </label>
           </div>
 
@@ -294,7 +451,7 @@ export function AdminProductsPage({ mode = 'admin' }) {
             {filteredProducts.map((product) => (
               <article key={product._id} className="admin-product-row">
                 <img
-                  src={product.image || fallbackImage}
+                  src={resolveImageUrl(product.image) || fallbackImage}
                   alt={product.name}
                   onError={(event) => {
                     event.currentTarget.src = fallbackImage

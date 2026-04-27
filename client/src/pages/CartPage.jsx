@@ -7,6 +7,7 @@ import {
   removeCartItem,
   updateCartItem,
 } from '../services/cart'
+import { resolveImageUrl } from '../utils/image'
 
 const formatMoney = (value) => new Intl.NumberFormat('en-IN', {
   style: 'currency',
@@ -117,7 +118,7 @@ export function CartPage() {
             {items.map((item) => (
               <article key={String(item.product)} className="cart-item">
                 <img
-                  src={item.image || fallbackImage}
+                  src={resolveImageUrl(item.image) || fallbackImage}
                   alt={item.name}
                   onError={(event) => {
                     event.currentTarget.src = fallbackImage

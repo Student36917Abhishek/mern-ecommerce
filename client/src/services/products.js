@@ -16,12 +16,18 @@ export async function fetchMyProducts() {
 }
 
 export async function createProduct(payload) {
-  const { data } = await api.post('/products', payload)
+  const config = payload instanceof FormData
+    ? { headers: { 'Content-Type': 'multipart/form-data' } }
+    : undefined
+  const { data } = await api.post('/products', payload, config)
   return data
 }
 
 export async function updateProduct(productId, payload) {
-  const { data } = await api.put(`/products/${productId}`, payload)
+  const config = payload instanceof FormData
+    ? { headers: { 'Content-Type': 'multipart/form-data' } }
+    : undefined
+  const { data } = await api.put(`/products/${productId}`, payload, config)
   return data
 }
 

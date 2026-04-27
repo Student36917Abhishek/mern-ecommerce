@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import fallbackImage from '../assets/hero.png'
 import { formatPrice } from '../utils/format'
+import { resolveImageUrl } from '../utils/image'
 
 export function ProductCard({ product, onAddToCart }) {
   const availability = product.stock > 0 ? `${product.stock} in stock` : 'Sold out'
@@ -9,7 +10,7 @@ export function ProductCard({ product, onAddToCart }) {
     <article className="product-card">
       <Link to={`/products/${product._id}`} className="product-card__media">
         <img
-          src={product.image || fallbackImage}
+          src={resolveImageUrl(product.image) || fallbackImage}
           alt={product.name}
           onError={(event) => {
             event.currentTarget.src = fallbackImage

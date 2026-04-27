@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { fetchOrderById } from '../services/orders'
+import { resolveImageUrl } from '../utils/image'
 
 const formatMoney = (value) => new Intl.NumberFormat('en-IN', {
   style: 'currency',
@@ -127,7 +128,7 @@ export function OrderDetailPage() {
             <div className="order-items-list">
               {order.orderItems.map((item) => (
                 <div key={String(item.product?._id || item.product)} className="order-item-row">
-                  <img src={item.image || 'https://placehold.co/120x120?text=Item'} alt={item.name} />
+                  <img src={resolveImageUrl(item.image) || 'https://placehold.co/120x120?text=Item'} alt={item.name} />
                   <div>
                     <strong>{item.name}</strong>
                     <span>Qty {item.quantity}</span>

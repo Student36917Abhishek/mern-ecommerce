@@ -4,6 +4,7 @@ const Product = require("../models/Product");
 const { protect, sellerOrAdmin } = require("../middleware/authMiddleware");
 const { sendSuccess } = require("../utils/apiResponse");
 const { logAudit } = require("../utils/auditLogger");
+const upload = require("../middleware/uploadMiddleware");
 const {
   validateProductCreate,
   validateProductUpdate,
@@ -11,10 +12,11 @@ const {
 
 const router = express.Router();
 
-router.post("/", protect, sellerOrAdmin, validateProductCreate, async (req, res) => {
+router.post("/", protect, sellerOrAdmin, upload.single("image"), validateProductCreate, async (req, res) => {
   try {
     const product = new Product({
       ...req.body,
+      image: req.file ? `/uploads/${req.file.filename}` : req.body.image || "",
       seller: req.user.role === "seller" ? req.user._id : req.body.seller || null,
     });
     const savedProduct = await product.save();
@@ -148,7 +150,7 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-router.put("/:id", protect, sellerOrAdmin, validateProductUpdate, async (req, res) => {
+router.put("/:id", protect, sellerOrAdmin, upload.single("image"), validateProductUpdate, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ message: "Invalid product ID." });
@@ -160,6 +162,11 @@ router.put("/:id", protect, sellerOrAdmin, validateProductUpdate, async (req, re
       if (Object.prototype.hasOwnProperty.call(req.body, key)) {
         updates[key] = req.body[key];
       }
+    }
+
+    // If a new file is uploaded, use the file path
+    if (req.file) {
+      updates.image = `/uploads/${req.file.filename}`;
     }
 
     const product = await Product.findById(req.params.id);

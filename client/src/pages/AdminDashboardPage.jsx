@@ -17,46 +17,49 @@ export function AdminDashboardPage() {
   const [dashboard, setDashboard] = useState(null)
   const [auditLogs, setAuditLogs] = useState([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState('')
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    let isMounted = true
-
-    const loadDashboard = async () => {
-      try {
+  const loadDashboard = async ({ silent = false } = {}) => {
+    try {
+      if (silent) {
+        setRefreshing(true)
+      } else {
         setLoading(true)
-        const [dashboardData, logsData] = await Promise.all([
-          fetchAdminDashboard(),
-          fetchAdminAuditLogs(),
-        ])
+      }
 
-        if (isMounted) {
-          setDashboard(dashboardData)
-          setAuditLogs(logsData.logs || [])
-          setError('')
-        }
-      } catch (requestError) {
-        if (isMounted) {
-          setError(requestError?.response?.data?.message || 'Unable to load admin dashboard.')
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false)
-        }
+      const [dashboardData, logsData] = await Promise.all([
+        fetchAdminDashboard(),
+        fetchAdminAuditLogs(),
+      ])
+
+      setDashboard(dashboardData)
+      setAuditLogs(logsData.logs || [])
+      setLastUpdated(new Date().toLocaleTimeString('en-IN', {
+        hour: '2-digit',
+        minute: '2-digit',
+      }))
+      setError('')
+    } catch (requestError) {
+      setError(requestError?.response?.data?.message || 'Unable to load admin dashboard.')
+    } finally {
+      if (silent) {
+        setRefreshing(false)
+      } else {
+        setLoading(false)
       }
     }
+  }
 
+  useEffect(() => {
     loadDashboard()
-
-    return () => {
-      isMounted = false
-    }
   }, [])
+
+  const metrics = dashboard?.metrics || {}
 
   const metricCards = useMemo(
     () => {
-      const metrics = dashboard?.metrics || {}
-
       return [
         { label: 'Revenue', value: formatPrice(metrics.totalRevenue), tone: 'strong' },
         { label: 'Orders', value: metrics.totalOrders || 0 },
@@ -68,6 +71,38 @@ export function AdminDashboardPage() {
     },
     [dashboard],
   )
+
+  const deliveryRate = useMemo(() => {
+    const totalOrders = Number(metrics.totalOrders || 0)
+    const deliveredOrders = Number(metrics.deliveredOrders || 0)
+
+    if (!totalOrders) {
+      return 0
+    }
+
+    return Math.round((deliveredOrders / totalOrders) * 100)
+  }, [metrics.deliveredOrders, metrics.totalOrders])
+
+  const quickActions = [
+    {
+      title: 'Manage products',
+      text: 'Create listings, update prices, and fix stock quickly.',
+      link: '/admin/products',
+      cta: 'Open products',
+    },
+    {
+      title: 'Track orders',
+      text: 'Review incoming orders and update fulfillment status.',
+      link: '/admin/orders',
+      cta: 'Open orders',
+    },
+    {
+      title: 'Review users',
+      text: 'Check newly registered users and roles.',
+      link: '/admin/users',
+      cta: 'Open users',
+    },
+  ]
 
   const readableAction = (action) =>
     String(action || '')
@@ -82,7 +117,7 @@ export function AdminDashboardPage() {
     <section className="admin-page">
       <AdminNav />
 
-      <header className="catalog-hero">
+      <header className="catalog-hero admin-dashboard-hero">
         <div>
           <p className="eyebrow">Shopora admin</p>
           <h1>Monitor store activity from one dashboard.</h1>
@@ -91,9 +126,23 @@ export function AdminDashboardPage() {
           </p>
         </div>
 
-        <Link to="/admin/products" className="button button--solid">
-          Add product
-        </Link>
+        <div className="admin-dashboard-actions">
+          <Link to="/admin/products" className="button button--solid">
+            Add product
+          </Link>
+          <Link to="/admin/orders" className="button button--ghost">
+            View orders
+          </Link>
+          <button
+            type="button"
+            className="button button--ghost"
+            onClick={() => loadDashboard({ silent: true })}
+            disabled={refreshing}
+          >
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </button>
+          <span className="admin-last-updated">Updated {lastUpdated || 'just now'}</span>
+        </div>
       </header>
 
       {error ? <div className="catalog-state catalog-state--error">{error}</div> : null}
@@ -106,6 +155,36 @@ export function AdminDashboardPage() {
           </article>
         ))}
       </div>
+
+      <div className="admin-health-strip">
+        <article className="admin-health-card">
+          <p>Fulfillment rate</p>
+          <strong>{deliveryRate}%</strong>
+          <span>{metrics.deliveredOrders || 0} delivered of {metrics.totalOrders || 0} total orders</span>
+        </article>
+        <article className="admin-health-card">
+          <p>Pending queue</p>
+          <strong>{metrics.pendingOrders || 0}</strong>
+          <span>Orders waiting for processing</span>
+        </article>
+        <article className="admin-health-card">
+          <p>Low stock alerts</p>
+          <strong>{metrics.lowStockCount || 0}</strong>
+          <span>Products at or below stock threshold</span>
+        </article>
+      </div>
+
+      <section className="admin-quick-actions-grid">
+        {quickActions.map((item) => (
+          <article key={item.title} className="panel-card admin-quick-action-card">
+            <h3>{item.title}</h3>
+            <p>{item.text}</p>
+            <Link to={item.link} className="button button--ghost button--compact">
+              {item.cta}
+            </Link>
+          </article>
+        ))}
+      </section>
 
       <div className="admin-dashboard-grid">
         <section className="panel-card admin-list-panel">
@@ -132,6 +211,12 @@ export function AdminDashboardPage() {
                 </div>
               </article>
             ))}
+
+            {!(dashboard?.recentOrders || []).length ? (
+              <div className="admin-panel-empty">
+                <p>No orders yet.</p>
+              </div>
+            ) : null}
           </div>
         </section>
 
@@ -158,6 +243,12 @@ export function AdminDashboardPage() {
                 </span>
               </article>
             ))}
+
+            {!(dashboard?.lowStockProducts || []).length ? (
+              <div className="admin-panel-empty">
+                <p>Great! No low stock products right now.</p>
+              </div>
+            ) : null}
           </div>
         </section>
 
@@ -179,9 +270,20 @@ export function AdminDashboardPage() {
                   <strong>{user.name}</strong>
                   <span>{user.email}</span>
                 </div>
-                <span className="badge">{user.role}</span>
+                <div className="admin-user-role-stack">
+                  <span className="badge">{user.role}</span>
+                  <span className={user.isEmailVerified ? 'badge badge--good' : 'badge'}>
+                    {user.isEmailVerified ? 'verified' : 'unverified'}
+                  </span>
+                </div>
               </article>
             ))}
+
+            {!(dashboard?.recentUsers || []).length ? (
+              <div className="admin-panel-empty">
+                <p>No recent registrations to show.</p>
+              </div>
+            ) : null}
           </div>
         </section>
 
@@ -211,9 +313,8 @@ export function AdminDashboardPage() {
           </div>
 
           {!auditLogs.length ? (
-            <div className="empty-cart">
-              <p className="eyebrow">No logs yet</p>
-              <h2>Audit entries will appear after admin and seller actions.</h2>
+            <div className="admin-panel-empty">
+              <p>No audit logs yet. Admin and seller actions will appear here.</p>
             </div>
           ) : null}
         </section>

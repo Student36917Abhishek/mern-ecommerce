@@ -26,8 +26,23 @@ next();
 };
 
 const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+const toNumberIfNumeric = (value) => {
+if (typeof value === "number") {
+return value;
+}
+
+if (typeof value === "string" && value.trim() !== "") {
+const parsed = Number(value);
+return Number.isNaN(parsed) ? value : parsed;
+}
+
+return value;
+};
 
 const validateProductCreate = (req, res, next) => {
+req.body.price = toNumberIfNumeric(req.body.price);
+req.body.stock = toNumberIfNumeric(req.body.stock);
+
 const { name, description, price, category, stock, image } = req.body;
 
 if (!name || !description || price === undefined) {
@@ -65,9 +80,12 @@ const validateProductUpdate = (req, res, next) => {
 const allowed = ["name", "description", "price", "category", "stock", "image"];
 const bodyKeys = Object.keys(req.body);
 
-if (bodyKeys.length === 0) {
+if (bodyKeys.length === 0 && !req.file) {
 return res.status(400).json({ message: "Provide at least one field to update." });
 }
+
+req.body.price = toNumberIfNumeric(req.body.price);
+req.body.stock = toNumberIfNumeric(req.body.stock);
 
 const invalidField = bodyKeys.find((key) => !allowed.includes(key));
 if (invalidField) {
