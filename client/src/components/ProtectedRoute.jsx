@@ -20,12 +20,18 @@ export function ProtectedRoute({ children, requiredRole, requiredRoles }) {
       : []
 
   if (allowedRoles.length > 0 && !allowedRoles.includes(user?.role)) {
+    const roleLabel = allowedRoles.join(' or ')
+    const heading =
+      allowedRoles.length === 1
+        ? `This page is only available for ${roleLabel} accounts.`
+        : `This page is only available for ${roleLabel} accounts.`
+
     return (
       <section className="auth-screen">
         <div className="auth-card">
           <p className="eyebrow">Access denied</p>
-          <h1>You do not have permission to open this page.</h1>
-          <p className="hero-text">This area is restricted to admin users.</p>
+          <h1>{heading}</h1>
+          <p className="hero-text">Your current role does not have access to this area.</p>
           <div className="hero-actions">
             <Link to="/sell" className="button button--solid">
               Become a seller

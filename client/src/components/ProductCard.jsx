@@ -26,10 +26,14 @@ export function ProductCard({ product, onAddToCart }) {
           </span>
         </div>
 
-        <h2>
-          <Link to={`/products/${product._id}`}>{product.name}</Link>
+        <h2 className="product-card__title">
+          <Link to={`/products/${product._id}`} title={product.name}>
+            {product.name}
+          </Link>
         </h2>
-        <p>{product.description}</p>
+        <p className="product-card__description" title={product.description}>
+          {product.description}
+        </p>
 
         <div className="product-card__footer">
           <strong>{formatPrice(product.price)}</strong>

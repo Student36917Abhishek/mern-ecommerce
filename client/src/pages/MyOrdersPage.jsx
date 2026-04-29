@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import fallbackImage from '../assets/hero.png'
 import { fetchMyOrders } from '../services/orders'
+import { resolveImageUrl } from '../utils/image'
 
 const formatMoney = (value) => new Intl.NumberFormat('en-IN', {
   style: 'currency',
@@ -18,6 +20,12 @@ const statusLabelClass = (status) => {
   if (status === 'delivered') return 'badge badge--good'
   if (status === 'cancelled') return 'badge badge--danger'
   return 'badge'
+}
+
+const getItemIdLabel = (item) => {
+  const rawId = item?.product?._id || item?.product || ''
+  const shortId = String(rawId).slice(-8).toUpperCase()
+  return shortId ? `ID: ${shortId}` : 'ID: N/A'
 }
 
 export function MyOrdersPage() {
@@ -92,6 +100,27 @@ export function MyOrdersPage() {
                   <h2>#{String(order._id).slice(-6).toUpperCase()}</h2>
                 </div>
                 <span className={statusLabelClass(order.orderStatus)}>{order.orderStatus}</span>
+              </div>
+
+              <div className="order-card__items">
+                {(order.orderItems || []).map((item) => (
+                  <div key={String(item.product?._id || item.product)} className="order-card__item">
+                    <div className="order-card__media">
+                      <img
+                        src={resolveImageUrl(item.image) || fallbackImage}
+                        alt={item.name}
+                        onError={(event) => {
+                          event.currentTarget.src = fallbackImage
+                        }}
+                      />
+                    </div>
+                    <div className="order-card__item-body">
+                      <strong>{item.name}</strong>
+                      <span>{formatMoney(item.price)} each</span>
+                      <small>{getItemIdLabel(item)}</small>
+                    </div>
+                  </div>
+                ))}
               </div>
 
               <div className="order-card__metrics">

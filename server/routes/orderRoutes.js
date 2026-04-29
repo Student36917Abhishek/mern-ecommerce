@@ -150,7 +150,7 @@ router.get("/my", protect, async (req, res) => {
     const orders = await Order.find({ user: req.user._id })
       .sort({ createdAt: -1 })
       .select(
-        "_id totalItems subtotal tax shippingFee grandTotal paymentMethod paymentStatus orderStatus isPaid createdAt"
+        "_id orderItems totalItems subtotal tax shippingFee grandTotal paymentMethod paymentStatus orderStatus isPaid createdAt"
       );
 
     return sendSuccess(res, 200, "My orders fetched successfully.", {

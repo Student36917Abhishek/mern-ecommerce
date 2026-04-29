@@ -117,13 +117,15 @@ export function CartPage() {
           <div className="cart-items">
             {items.map((item) => (
               <article key={String(item.product)} className="cart-item">
-                <img
-                  src={resolveImageUrl(item.image) || fallbackImage}
-                  alt={item.name}
-                  onError={(event) => {
-                    event.currentTarget.src = fallbackImage
-                  }}
-                />
+                <div className="cart-item__media">
+                  <img
+                    src={resolveImageUrl(item.image) || fallbackImage}
+                    alt={item.name}
+                    onError={(event) => {
+                      event.currentTarget.src = fallbackImage
+                    }}
+                  />
+                </div>
 
                 <div className="cart-item__content">
                   <Link to={`/products/${item.product}`}>
